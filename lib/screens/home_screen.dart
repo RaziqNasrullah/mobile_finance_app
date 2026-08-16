@@ -8,13 +8,15 @@ import '../models/transaction.dart';
 import '../utils/theme.dart';
 import '../utils/theme_notifier.dart';
 import '../utils/transaction_store.dart';
-import '../widgets/balance_card.dart';
+import '../widgets/wallet_card_swiper.dart';
+import '../utils/wallet_store.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/transaction_card.dart';
 import '../widgets/theme_toggle_button.dart';
 import 'transaction_form.dart';
 import 'stats_screen.dart';
 import 'settings_screen.dart';
+import 'manage_wallets_screen.dart';
 
 // ─── Filter enum ─────────────────────────────────────────────────────────────
 enum TxFilter { all, income, expense }
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _pageFade;
 
   int _navIndex = 0;
+  int _selectedWalletIndex = 0;
   // Search + filter state
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
@@ -109,6 +112,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _openAddWallet(BuildContext context) async {
+    final isDark = context.read<ThemeNotifier>().isDark;
+    await Navigator.push(context, MaterialPageRoute(
+      builder: (_) => ManageWalletsScreen(isDark: isDark),
+    ));
+  }
+
   Future<void> _openForm(BuildContext ctx, {Transaction? editing, required bool isDark}) async {
     HapticFeedback.mediumImpact();
     final store = ctx.read<TransactionStore>();
@@ -116,13 +126,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TransactionForm(editing: editing, isDark: isDark),
+      builder: (_) => TransactionForm(
+        editing: editing,
+        isDark: isDark,
+        initialWalletId: _selectedWalletIndex < context.read<WalletStore>().wallets.length
+          ? context.read<WalletStore>().wallets[_selectedWalletIndex].id
+          : 'cash',
+      ),
     );
     if (result != null) {
       HapticFeedback.lightImpact();
       editing != null
-        ? await store.update(editing.id, result['name'], result['type'], result['amount'], result['date'], result['category'])
-        : await store.add(result['name'], result['type'], result['amount'], result['date'], result['category']);
+        ? await store.update(editing.id, result['name'], result['type'], result['amount'], result['date'], result['category'], result['walletId'] ?? 'cash')
+        : await store.add(result['name'], result['type'], result['amount'], result['date'], result['category'], result['walletId'] ?? 'cash');
     }
   }
 
@@ -202,7 +218,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── HOME TAB ──────────────────────────────────────────────────────────────
 
   Widget _buildHome(TransactionStore store, bool d) {
-    final filtered = _applyFilters(store.transactions.toList());
+    final walletStore = context.read<WalletStore>();
+    final wallets = walletStore.wallets;
+    final safeIdx = _selectedWalletIndex.clamp(0, wallets.length);
+    // If on "Add Wallet" card, show all transactions
+    final walletTxs = safeIdx < wallets.length
+        ? store.byWallet(wallets[safeIdx].id)
+        : store.transactions.toList();
+    final filtered = _applyFilters(walletTxs);
     final groups   = _groupByDate(filtered);
 
     // Build flat sliver items: [groupHeader, card, card, groupHeader, card, ...]
@@ -232,12 +255,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         SliverToBoxAdapter(child: _buildHeader(d)),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-        // Balance card
+        // Wallet card swiper
         SliverToBoxAdapter(
-          child: BalanceCard(
-            balance: store.balance,
-            income:  store.totalIncome,
-            expense: store.totalExpense,
+          child: Consumer<WalletStore>(
+            builder: (_, walletStore, __) {
+              final wallets = walletStore.wallets;
+              final balances  = {for (final w in wallets) w.id: store.walletBalance(w.id)};
+              final incomes   = {for (final w in wallets) w.id: store.walletIncome(w.id)};
+              final expenses  = {for (final w in wallets) w.id: store.walletExpense(w.id)};
+              // clamp index in case wallets shrunk
+              final safeIdx = _selectedWalletIndex.clamp(0, wallets.length);
+              return WalletCardSwiper(
+                wallets: wallets,
+                balances: balances,
+                incomes: incomes,
+                expenses: expenses,
+                selectedIndex: safeIdx,
+                onPageChanged: (i) => setState(() => _selectedWalletIndex = i),
+                onAddWallet: () => _openAddWallet(context),
+              );
+            },
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),

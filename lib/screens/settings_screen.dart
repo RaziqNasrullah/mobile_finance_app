@@ -9,6 +9,7 @@ import '../utils/theme_notifier.dart';
 import '../utils/pdf_export.dart';
 import '../utils/transaction_store.dart';
 import 'manage_categories_screen.dart';
+import 'manage_wallets_screen.dart';
 import '../widgets/glass_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -216,6 +217,28 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 trailing: _actionBtn('Kelola', AppColors.neonGreen, () {
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => ManageCategoriesScreen(isDark: d),
+                  ));
+                }),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Dompet
+            _sectionLabel('DOMPET', d),
+            const SizedBox(height: 8),
+            GlassCard(
+              borderColor: AppColors.neonBlue.withOpacity(0.3),
+              isDark: d,
+              padding: EdgeInsets.zero,
+              child: _settingRow(
+                icon: Icons.account_balance_wallet_rounded,
+                iconColor: AppColors.neonBlue,
+                title: 'Kelola Dompet',
+                subtitle: 'Tambah, edit, atau hapus dompet',
+                isDark: d,
+                trailing: _actionBtn('Kelola', AppColors.neonBlue, () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ManageWalletsScreen(isDark: d),
                   ));
                 }),
               ),

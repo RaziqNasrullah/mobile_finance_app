@@ -63,19 +63,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
     return map;
   }
 
-  List<Map<String, dynamic>> get _weeklyData {
-    final now = DateTime.now();
-    return List.generate(7, (i) {
-      final day = now.subtract(Duration(days: 6 - i));
-      final dayTx = widget.transactions.where((t) =>
-        t.date.year == day.year && t.date.month == day.month && t.date.day == day.day);
-      return {
-        'label': DateFormat('E').format(day).substring(0, 2),
-        'income': dayTx.where((t) => t.type == TransactionType.income).fold(0.0, (s, t) => s + t.amount),
-        'expense': dayTx.where((t) => t.type == TransactionType.expense).fold(0.0, (s, t) => s + t.amount),
-      };
-    });
-  }
+
 
   String _fmt(double v) {
     if (v >= 1000000) return 'Rp ${(v / 1000000).toStringAsFixed(1)}Jt';
@@ -127,30 +115,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                 ],
               ),
             ),
-            const SizedBox(height: 16),
 
-            // Weekly bar chart
-            GlassCard(
-              borderColor: AppColors.neonGreen.withOpacity(0.4),
-              isDark: d,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('7 Hari Terakhir', style: TextStyle(
-                    color: AppColors.textPrimaryOf(d), fontSize: 14, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    _dot(AppColors.income), const SizedBox(width: 4),
-                    Text('Masuk', style: TextStyle(color: AppColors.textSecondaryOf(d), fontSize: 10)),
-                    const SizedBox(width: 12),
-                    _dot(AppColors.expense), const SizedBox(width: 4),
-                    Text('Keluar', style: TextStyle(color: AppColors.textSecondaryOf(d), fontSize: 10)),
-                  ]),
-                  const SizedBox(height: 16),
-                  WeeklyBarChart(data: _weeklyData, isDark: d),
-                ],
-              ),
-            ),
             const SizedBox(height: 16),
 
             // Category breakdown
